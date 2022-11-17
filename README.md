@@ -2,7 +2,7 @@
 ## Hola
 
 Presentamos los principales datos y estadísticos de jugadores y
-selecciones que participarán en el \*\*Mundial Qatar 2022\*.\*\*
+selecciones que participarán en el **Mundial Qatar 2022**.
 
 Para esto se ha extraído los datos desde la web de transfermarkt –\>
 <https://www.transfermarkt.es/> usando la técnica de webscraping.
