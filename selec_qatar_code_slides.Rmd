@@ -1,0 +1,532 @@
+---
+title: "DATOS DE SELECCIONES Y JUGADORES - MUNDIAL QATAR 2022."  
+subtitle: "Datos extraidos de Transfermark usando webscraping."
+author: "César Anderson Huamaní Ninahuanca."  
+company: "Desarrollado integramente en R."
+date: "14 Noviembre 2022."
+output: 
+    ioslides_presentation:
+      logo: logillo.png
+      transition: slower
+      pandoc_args: [
+        "--wrap", "none"
+      ] # Este es para que el título y subtitulo tengan más letras
+---
+
+```{css, echo=FALSE}
+.title-slide hgroup h1 {
+  font-size: 45px;
+  letter-spacing: 0;
+  color: rgba(242, 21, 0, 0.6);
+}
+
+.title-slide hgroup h2 {
+  font-size: 30px;
+  letter-spacing: 0;
+  color: rgba(60, 164, 225, 0.5);
+}
+
+.gdbar img {
+  width: 200px !important;
+  height: 70px !important;
+  margin: 2px 2px;
+}
+
+.gdbar {
+  width: 250px !important;
+  height: 80px !important;
+}
+
+slides > slide:not(.nobackground):before {
+  width: 160px;
+  height: 70px;
+  background-size: 140px 50px;
+}
+
+b {
+  color: rgba(0, 222, 199, 0.9);
+  font-size: 30px;
+}
+
+che {
+  color: rgba(115, 0, 255, 0.8);
+  font-size: 25px;
+  font-weight: bold;
+  text-align: center;
+}
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(dplyr)
+library(rvest)
+#devtools::install_github("CesarAHN/datametria")
+library(datametria)
+library(ggplot2)
+library(tidyr)
+library(gt)
+#devtools::install_github("jthomasmock/gtExtras")
+library(gtExtras)
+library(ggplot2)
+library(viridis)
+library(ggrepel)
+
+dtb<-readRDS("c:/OTROS/dtb_qatar2022.rds")
+```
+
+## EXTRACCIÓN DE DATOS, FUENTE Y SOFTWARE.
+
+Los datos fueron extraídos mediante webscraping de la página web <https://www.transfermarkt.es/>.
+
+Para la extracción de datos, limpieza, procesamiento y presentación se usó el software R.
+
+La documentación y los códigos de programación los puede encontrar en mi github: <https://github.com/CesarAHN/datos-selecciones-jugadores-qatar-2022>
+
+
+## JUGADORES POR POSICIONES {.flexbox .vleft}
+<b>Japón y Camerún han convocado a más delanteros.</b>
+
+<div class="columns-2">
+```{r, echo=FALSE, fig.height=4, fig.width=4, message=FALSE}
+dtb %>% count(PUESTO, sort = T) %>% mutate(p=n/sum(n),ymax=cumsum(p),ymin=c(0, head(ymax, n=-1)),
+                                           lp=(ymax + ymin)/2, etiq=paste0(round(p*100,1),"%")) %>% 
+  ggplot(aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=PUESTO)) +
+  geom_rect() +
+  geom_label(x=3.5, aes(y=lp, label=etiq), size=5, bg=NA, fontface="bold", alpha=.7, color="black") +
+  scale_fill_viridis(discrete = T,name="")+
+  labs(title = "DISTRIBUCIÓN DE JUGADORES\nPOR PUESTOS.")+
+  coord_polar(theta="y") +
+  xlim(c(2, 4)) +
+  theme_void() +
+  theme(legend.position = "bottom",legend.title = element_text(face = "bold"))+
+  guides(fill=guide_legend(ncol=2))
+```
+      
+
+```{r, echo=FALSE, message=FALSE}
+dtb %>% group_by(PUESTO,BANDERA, PAIS) %>% count() %>% group_by(PAIS) %>% mutate(p=n/sum(n)) %>% 
+  inner_join(dtb %>% group_by(PUESTO, PAIS) %>% count() %>% group_by(PUESTO) %>% summarise(n=max(n))) %>% 
+  arrange(PUESTO,-n,-p) %>% rename(N=BANDERA, JUGADORES=n, `%`=p) %>% ungroup() %>% gt() %>% 
+  fmt_percent(columns = matches("%")) %>% 
+  tab_header(title = "SELECCIONES QUE LLEVAN MÁS JUGADORES POR PUESTO.") %>% 
+  gt_theme_538() %>% gt_img_rows(columns = N, height = 10) %>% 
+  tab_style(style = list(cell_text(align = "center", size="xx-small")),
+            locations = list(cells_column_labels(columns = c(PUESTO,PAIS,JUGADORES,`%`,N)))) %>%
+  tab_style(style = list(cell_text(align = "center", size="small")),
+            locations = list(cells_title("title"))) %>% 
+  tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes())) %>% 
+  tab_style(style = list(cell_text(align = "center", size="xx-small")),
+            locations = list(cells_body(columns = c(PUESTO,PAIS,JUGADORES,`%`,N))))
+```
+</div>
+
+## JUGADORES POR DOMINIO DE PIE {.flexbox .vleft}
+
+<b>El 34.6% de los jugadores que han sido convocados por Serbia o Camerún son zurdos.</b>
+<div class="columns-2">
+```{r, echo=FALSE, message=FALSE, fig.height=4, fig.width=4}
+dtb %>% count(PIE, sort = T) %>% mutate(p=n/sum(n),ymax=cumsum(p),ymin=c(0, head(ymax, n=-1)),
+                                            lp=(ymax + ymin)/2, etiq=paste0(round(p*100,1),"%")) %>% 
+  ggplot(aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=PIE)) +
+  geom_rect() +
+  geom_label_repel(x=3.5, aes(y=lp, label=etiq), size=5, bg=NA, fontface="bold", alpha=.7, color="black") +
+  scale_fill_viridis(discrete = T,name="")+
+  labs(title = "DISTRIBUCIÓN DE JUGADORES\nPOR DOMINIO DE PIE")+
+  coord_polar(theta="y") +
+  xlim(c(2, 4)) +
+  theme_void() +
+  theme(legend.position = "bottom",legend.title = element_text(face = "bold"))+
+  guides(fill=guide_legend(ncol=2))
+```
+
+```{r, echo=FALSE, message=FALSE}
+dtb %>% group_by(BANDERA,PAIS) %>% count(PIE) %>% mutate(p=n/sum(n)) %>% 
+  filter(PIE=="IZQUIERDO") %>% arrange(-n) %>% head(4) %>% select(-PIE) %>% 
+  rename(N=BANDERA, JUGADORES=n, `%`=p) %>% ungroup() %>% gt() %>% 
+  fmt_percent(columns = matches("%")) %>% 
+  tab_header(title = "TOP 4 DE SELECCIONES QUE LLEVAN MÁS JUGADORES CON DOMINIO DE PIE IZQUIERDO.") %>% 
+  gt_theme_538() %>% gt_img_rows(columns = N, height = 20) %>% 
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_column_labels(columns = c(PAIS,JUGADORES,`%`,N)))) %>%
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_body(columns = c(PAIS,JUGADORES,`%`,N)))) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>% 
+  tab_source_note("FUENTE: TRANSFERMARKT") %>% 
+  tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+</div>  
+
+## ALTURA PROMEDIO POR SELECCIONES {.flexbox .vleft}
+
+<b>Las 5 primeras selecciones con la mayor altura promedio son de Europa.</b>
+<b>Argentina y México se ubican en el top 5 de selecciones con la altura promedio más baja.</b>
+
+<div class="columns-2">
+```{r, echo=FALSE, message=FALSE}
+dtb %>% group_by(BANDERA,PAIS) %>% summarise(`TALLA PROMEDIO`=mean(TALLA, na.rm=T)) %>% arrange(-`TALLA PROMEDIO`) %>%
+  head(5) %>% mutate(`TALLA PROMEDIO`=paste0(round(`TALLA PROMEDIO`,2)," m")) %>% rename(N=BANDERA) %>% ungroup() %>% gt() %>% 
+  tab_header(title = "TOP 5 DE SELECCIONES CON LA TALLA PROMEDIO MÁS ALTA.") %>% 
+  gt_theme_538() %>% gt_img_rows(columns = N, height = 20) %>% 
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_column_labels(columns = c(PAIS,`TALLA PROMEDIO`,N)))) %>%
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_body(columns = c(PAIS,`TALLA PROMEDIO`,N)))) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>% 
+  tab_source_note("FUENTE: TRANSFERMARKT") %>% 
+  tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+
+```{r, echo=FALSE, message=FALSE}
+dtb %>% group_by(BANDERA,PAIS) %>% summarise(`TALLA PROMEDIO`=mean(TALLA, na.rm=T)) %>% arrange(`TALLA PROMEDIO`) %>%
+  head(5) %>% mutate(`TALLA PROMEDIO`=paste0(round(`TALLA PROMEDIO`,2)," m")) %>% rename(N=BANDERA) %>% ungroup() %>% gt() %>% 
+  tab_header(title = "TOP 5 DE SELECCIONES CON LA TALLA PROMEDIO MÁS BAJA.") %>% 
+  gt_theme_538() %>% gt_img_rows(columns = N, height = 20) %>% 
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_column_labels(columns = c(PAIS,`TALLA PROMEDIO`,N)))) %>%
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_body(columns = c(PAIS,`TALLA PROMEDIO`,N)))) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>% 
+  tab_source_note("FUENTE: TRANSFERMARKT") %>% tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+</div>
+
+## TOP JUGADORES ALTOS Y BAJOS {.flexbox .vleft}
+
+<b>Andries Noppert de paises bajos con 2.03 metros es el jugador más alto del mundial. Mientras que el más bajo es Tariq Lamptey de Ghana con 1.63 metros.</b>
+
+<div class="columns-2">
+```{r, echo=FALSE, message=FALSE}
+dtb %>% arrange(-TALLA) %>% head(4) %>% select(BANDERA,PAIS,JUGADOR,PUESTO,TALLA) %>%
+  mutate(TALLA=paste0(round(TALLA,2)," m")) %>% rename(N=BANDERA) %>% gt() %>% 
+  tab_header(title = "TOP 4 DE JUGADORES MÁS ALTOS.", subtitle = "En metros.") %>% 
+  gt_theme_538() %>% gt_img_rows(columns = N, height = 20) %>% 
+  tab_style(style = list(cell_text(align = "center", size = "x-small")),
+            locations = list(cells_column_labels(columns = c(PAIS,JUGADOR,PUESTO,TALLA,N)))) %>%
+  tab_style(style = list(cell_text(align = "center", size = "x-small")),
+            locations = list(cells_body(columns = c(PAIS,JUGADOR,PUESTO,TALLA,N)))) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>% 
+  tab_source_note("FUENTE: TRANSFERMARKT") %>% tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+
+```{r, echo=FALSE, message=FALSE}
+dtb %>% arrange(TALLA) %>% head(4) %>% select(BANDERA,PAIS,JUGADOR,PUESTO,TALLA) %>%
+  mutate(TALLA=paste0(round(TALLA,2)," m")) %>% rename(N=BANDERA) %>% gt() %>% 
+  tab_header(title = "TOP 4 DE JUGADORES MÁS BAJOS.", subtitle = "En metros.") %>% 
+  gt_theme_538() %>% gt_img_rows(columns = N, height = 20) %>% 
+  tab_style(style = list(cell_text(align = "center", size = "x-small")),
+            locations = list(cells_column_labels(columns = c(PAIS,JUGADOR,PUESTO,TALLA,N)))) %>%
+  tab_style(style = list(cell_text(align = "center", size = "x-small")),
+            locations = list(cells_body(columns = c(PAIS,JUGADOR,PUESTO,TALLA,N)))) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>% 
+  tab_source_note("FUENTE: TRANSFERMARKT") %>% 
+  tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+<div>
+
+## PARTIDOS JUGADOS PROMEDIO {.flexbox .vleft}
+
+<b>Qatar es la selección con más partidos jugados en promedio (53), es decir, sus seleccionados tienen la mayor experiencia jugando por su selección.</b>
+
+<div class="columns-2">
+```{r, echo=FALSE, message=FALSE}
+dtb %>% group_by(BANDERA,PAIS) %>% summarise(`MEDIA PARTIDOS`=round(mean(P_JUGADOS, na.rm=T))) %>%
+  arrange(-`MEDIA PARTIDOS`) %>% ungroup() %>% head(5) %>% rename(N=BANDERA) %>% gt() %>% 
+  tab_header(title = "TOP 5 DE SELECCIONES CON MÁS PARTIDOS PROMEDIOS JUGADOS.",
+             subtitle = "Media de los partidos jugados por sus seleccionados.") %>% 
+  gt_theme_538() %>% gt_img_rows(columns = N, height = 20) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>% 
+  tab_source_note("FUENTE: TRANSFERMARKT") %>%
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_column_labels(columns = c(PAIS,`MEDIA PARTIDOS`)))) %>%
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_body(columns = c(PAIS,`MEDIA PARTIDOS`)))) %>% 
+    tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+
+```{r, echo=FALSE, message=FALSE}
+dtb %>% group_by(BANDERA,PAIS) %>% summarise(`MEDIA PARTIDOS`=round(mean(P_JUGADOS, na.rm=T))) %>%
+  arrange(`MEDIA PARTIDOS`) %>% ungroup() %>% head(5) %>% rename(N=BANDERA) %>% gt() %>% 
+  tab_header(title = "TOP 5 DE SELECCIONES CON MENOS PARTIDOS PROMEDIOS JUGADOS.",
+             subtitle = "Media de los partidos jugados por sus seleccionados.") %>% 
+  gt_theme_538() %>% gt_img_rows(columns = N, height = 20) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>%
+  tab_source_note("FUENTE: TRANSFERMARKT") %>%
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_column_labels(columns = c(PAIS,`MEDIA PARTIDOS`)))) %>%
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_body(columns = c(PAIS,`MEDIA PARTIDOS`)))) %>% 
+    tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+</div>
+
+<p style="font-size:10px;">Se calcula como la media de los partidos oficiales jugados por todos los seleccionados convocados.</p> 
+
+## MÁS PARTIDOS JUGADOS {.flexbox .vleft}
+
+<b>Cristiano Ronaldo tiene 27 partidos más que Lionel Messi, jugando con su selección.</b>
+
+<div class="columns-2">
+```{r, echo=FALSE, message=FALSE}
+dtb %>% arrange(-P_JUGADOS) %>% head(5) %>% select(BANDERA,JUGADOR,PAIS,P_JUGADOS) %>% 
+  rename(N=BANDERA, `PARTIDOS JUGADOS`=P_JUGADOS) %>% gt() %>% 
+  tab_header(title = "TOP 5 DE JUGADORES CON MÁS PARTIDOS OFICIALES JUGADOS CON SU SELECCIÓN.") %>% 
+  gt_theme_538() %>% gt_img_rows(columns = N, height = 20) %>% 
+  tab_style(style = list(cell_text(align = "center",size="x-small")),
+            locations = list(cells_column_labels(columns = c(PAIS,JUGADOR,`PARTIDOS JUGADOS`,N)))) %>%
+  tab_style(style = list(cell_text(align = "center", size="x-small")),
+            locations = list(cells_body(columns = c(PAIS,JUGADOR,`PARTIDOS JUGADOS`,N)))) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>% 
+  tab_source_note("FUENTE: TRANSFERMARKT") %>% 
+    tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+
+<che>Para esta edición del mundial, 23 jugadores debutarán con su selecciones.</che>
+
+<che>Las selecciones con más debutantes son: Ghana, Paises Bajos y Portugal que han convocado a 3 jugadores que nunca han jugado un partido oficial.</che>
+<div>
+
+## MÁS GOLES ANOTADOS {.flexbox .vleft}
+
+<b>Cristiano Ronaldo, aproximadamente, anota 61 goles cada 100 partidos con su selección, mientras que Messi marca 55 goles cada 100 partidos.</b>
+
+
+<div class="columns-2">
+<che>Para esta edición del mundial, 334 jugadores nunca han marcado un gol con su selección nacional.</che>
+
+<che>Las selecciones con más jugadores que aún no marcan goles con sus selecciones son: Ghana (18), Camerún (17) y Senegal (17).</che>
+
+```{r, echo=FALSE, message=TRUE}
+dtb %>% arrange(-GOLES) %>% head(6) %>% mutate(p=GOLES/P_JUGADOS) %>% select(BANDERA,PAIS,JUGADOR,GOLES,p) %>% 
+  rename(N=BANDERA, `%`=p) %>% gt() %>% 
+  tab_header(title = "TOP 6 DE JUGADORES CON MÁS GOLES ANOTADOS CON SU SELECCIÓN.") %>% 
+  fmt_percent(columns = matches("%")) %>% 
+  gt_theme_538() %>% gt_img_rows(columns = N, height = 20) %>% 
+  tab_style(style = list(cell_text(align = "center", size = "small")),
+            locations = list(cells_column_labels(columns = c(PAIS,JUGADOR,GOLES,`%`,N)))) %>%
+  tab_style(style = list(cell_text(align = "center", size = "small")),
+            locations = list(cells_body(columns = c(PAIS,JUGADOR,GOLES,`%`,N)))) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>% 
+  tab_source_note("FUENTE: TRANSFERMARKT") %>% 
+      tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+</div>
+<p style="font-size:10px;">El % se calcula como el cociente entre el número de goles y el número de partidos jugados con su selección.</p> 
+
+## EDAD PROMEDIO SELECCIONES {.flexbox .vleft}
+
+<b>La selección con la edad promedio más alta es Irán, es 4.2 años superior al promedio de Ghana.</b>
+
+<div class="columns-2">
+```{r, echo=FALSE, message=FALSE}
+dtb %>% group_by(BANDERA,PAIS) %>% summarise(`EDAD PROMEDIO`=round(mean(EDAD, na.rm=T),1)) %>% arrange(-`EDAD PROMEDIO`) %>% head(5) %>% 
+  rename(N=BANDERA) %>% ungroup() %>% gt() %>% 
+  tab_header(title = "TOP 5 DE SELECCIONES CON LA MAYOR EDAD PROMEDIO.") %>% 
+  gt_theme_538() %>% gt_img_rows(columns = N, height = 20) %>% 
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_column_labels(columns = c(PAIS,`EDAD PROMEDIO`,N)))) %>%
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_body(columns = c(PAIS,`EDAD PROMEDIO`,N)))) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>% 
+  tab_source_note("FUENTE: TRANSFERMARKT") %>% 
+        tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+
+```{r, echo=FALSE, message=FALSE}
+dtb %>% group_by(BANDERA,PAIS) %>% summarise(`EDAD PROMEDIO`=round(mean(EDAD, na.rm=T),1)) %>% arrange(`EDAD PROMEDIO`) %>% head(5) %>% 
+  rename(N=BANDERA) %>% ungroup() %>% gt() %>% 
+  tab_header(title = "TOP 5 DE SELECCIONES CON LA MENOR EDAD PROMEDIO.") %>% 
+  gt_theme_538() %>% gt_img_rows(columns = N, height = 20) %>% 
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_column_labels(columns = c(PAIS,`EDAD PROMEDIO`,N)))) %>%
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_body(columns = c(PAIS,`EDAD PROMEDIO`,N)))) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>% 
+  tab_source_note("FUENTE: TRANSFERMARKT") %>% 
+        tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+</div>
+
+## EDAD DE JUGADORES {.flexbox .vleft}
+
+<b> En el top 20 de jugadores con mayor edad, México es la selección con más jugadores, 3 en total.</b>
+
+<div class="columns-2">
+```{r, echo=FALSE, message=FALSE}
+dtb %>% arrange(-EDAD) %>% head(6) %>% select(BANDERA,PAIS,JUGADOR,EDAD, DEBUT) %>% 
+  rename(N=BANDERA) %>% gt() %>% 
+  tab_header(title = "TOP 6 JUGADORES CON LA MAYOR EDAD.") %>% 
+  gt_theme_538() %>% gt_img_rows(columns = N, height = 20) %>% 
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_column_labels(columns = c(PAIS,JUGADOR,EDAD,DEBUT)))) %>%
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_body(columns = c(PAIS,JUGADOR,EDAD,DEBUT)))) %>% 
+  tab_style(style = list(cell_text(align = "center",size="x-small")),
+            locations = list(cells_column_labels(columns = c(PAIS,JUGADOR,EDAD,DEBUT,N)))) %>%
+  tab_style(style = list(cell_text(align = "center", size="x-small")),
+            locations = list(cells_body(columns = c(PAIS,JUGADOR,EDAD,DEBUT,N)))) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>% 
+  tab_source_note("FUENTE: TRANSFERMARKT") %>% 
+        tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+
+```{r, echo=FALSE, message=FALSE}
+dtb %>% arrange(EDAD) %>% head(6) %>% select(BANDERA,PAIS,JUGADOR,EDAD, DEBUT) %>% 
+  rename(N=BANDERA) %>% gt() %>% 
+  tab_header(title = "TOP 6 JUGADORES CON LA MENOR EDAD.") %>% 
+  fmt_missing(columns = DEBUT, missing_text = "AÚN NO DEBUTA") %>%
+  gt_theme_538() %>% gt_img_rows(columns = N, height = 20) %>% 
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_column_labels(columns = c(PAIS,JUGADOR,EDAD,DEBUT)))) %>%
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_body(columns = c(PAIS,JUGADOR,EDAD,DEBUT)))) %>% 
+    tab_style(style = list(cell_text(align = "center",size="x-small")),
+            locations = list(cells_column_labels(columns = c(PAIS,JUGADOR,EDAD,DEBUT,N)))) %>%
+  tab_style(style = list(cell_text(align = "center", size="x-small")),
+            locations = list(cells_body(columns = c(PAIS,JUGADOR,EDAD,DEBUT,N)))) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>% 
+  tab_source_note("FUENTE: TRANSFERMARKT") %>% 
+        tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+
+</div>
+
+## CLUBES QUE APORTAN MÁS JUGADORES
+
+<b>En el top 20 de clubes que aportan más jugadores, la premier league tiene a 6 clubes: M, City, M.United, Chelsea, Arsenal, Tottenham y Brighton.</b>
+```{r, echo=FALSE, message=FALSE}
+dtb %>% group_by(BANDERA2,LIGA,PAIS_LIGA,CLUB) %>% count(PAIS, sort = T) %>% mutate(JUGADORES=sum(n)) %>%
+  group_by(CLUB) %>% mutate(SELECCIONES=1:n(), SELECCIONES=max(SELECCIONES)) %>% arrange(-JUGADORES) %>% 
+  ungroup() %>% distinct(CLUB,PAIS_LIGA, .keep_all = T) %>% select(-PAIS, -n) %>% head(6) %>% 
+  rename(`PAIS DE LA LIGA`=PAIS_LIGA, N=BANDERA2) %>% gt() %>% 
+  tab_header(title = "TOP 5 CLUBES QUE APORTAN MÁS MÁS JUGADORES.",
+             subtitle = "Número de selecciones a los que aportan los clubes") %>% 
+  gt_theme_538() %>% gt_img_rows(columns = N, height = 20) %>% 
+  tab_style(style = list(cell_text(align = "center", size="small")),
+            locations = list(cells_column_labels(columns = c(CLUB,`PAIS DE LA LIGA`,LIGA,JUGADORES,SELECCIONES)))) %>%
+  tab_style(style = list(cell_text(align = "center", size="small")),
+            locations = list(cells_body(columns = c(CLUB,`PAIS DE LA LIGA`,LIGA,JUGADORES,SELECCIONES)))) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>% 
+  tab_source_note("FUENTE: TRANSFERMARKT") %>% 
+        tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+
+## LIGAS QUE APORTAN MÁS JUGADORES
+
+<b>La premier liga aporta más jugadores en todos los puestos, a excepción, de la delantero en el que aporta 1 jugador menos que "La Liga" de España.</b>
+
+<div class="columns-2">
+```{r, echo=FALSE, message=FALSE}
+dtb %>% count(BANDERA2,PAIS_LIGA,LIGA, sort = T) %>% mutate(`%`=n/sum(n)) %>% 
+  filter(LIGA!="OTRAS LIGAS") %>% head(5) %>% 
+  rename(N=BANDERA2, JUGADORES=n, `PAIS DE LA LIGA`=PAIS_LIGA) %>% gt() %>% 
+  tab_header(title = "TOP 5 LIGAS QUE APORTAN MÁS JUGADORES.", subtitle = "Como % del total de jugadores convocados al mundial.") %>% 
+  fmt_percent(columns = `%`) %>% 
+  gt_theme_538() %>% gt_img_rows(columns = N, height = 15) %>% 
+  tab_style(style = list(cell_text(align = "center", size="small")),
+            locations = list(cells_column_labels(columns = c(`PAIS DE LA LIGA`,LIGA,JUGADORES,`%`,N)))) %>%
+  tab_style(style = list(cell_text(align = "center", size="small")),
+            locations = list(cells_body(columns = c(`PAIS DE LA LIGA`,LIGA,JUGADORES,`%`,N)))) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>% 
+  tab_source_note("FUENTE: TRANSFERMARKT") %>% 
+        tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+
+```{r, echo=FALSE, message=FALSE}
+dtb %>% group_by(BANDERA2,PUESTO,PAIS_LIGA,LIGA) %>% count() %>% group_by(PUESTO) %>% mutate(`%`=n/sum(n)) %>%
+  filter(LIGA!="OTRAS LIGAS") %>% arrange(PUESTO,-n) %>% mutate(cont=1:n()) %>% filter(cont<=2) %>% 
+  select(-cont) %>% rename(N=BANDERA2, `PAIS DE LA LIGA`=PAIS_LIGA, JUGADORES=n) %>% ungroup() %>% gt() %>% 
+  tab_header(title = "TOP 2 LIGAS QUE APORTAN MÁS JUGADORES POR PUESTOS.", subtitle = "Como % del total de jugadores convocados por puestos.") %>% 
+  fmt_percent(columns = `%`) %>% 
+  gt_theme_538() %>% gt_img_rows(columns = N, height = 10) %>% 
+  tab_style(style = list(cell_text(align = "center", size = "xx-small")),
+            locations = list(cells_column_labels(columns = c(PUESTO,`PAIS DE LA LIGA`,LIGA,JUGADORES,`%`,N)))) %>%
+  tab_style(style = list(cell_text(align = "center", size = "xx-small")),
+            locations = list(cells_body(columns = c(PUESTO,`PAIS DE LA LIGA`,LIGA,JUGADORES,`%`,N)))) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>% 
+  tab_source_note("FUENTE: TRANSFERMARKT") %>% 
+        tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+</div>
+
+## JUGADORES CON MAYOR VALOR
+
+<b>En el top 20 de jugadores más valorados hay 5 jugadores de la selección inglesa, 3 de Brasil y España, 2 de Alemania, Francia y portugal, y 1 de Bélgica, Serbia y Uruguay.</b>
+
+```{r, echo=FALSE, message=FALSE}
+dtb %>% arrange(-VALOR_TRFM) %>% head(7) %>% select(BANDERA,JUGADOR, PUESTO, BANDERA2, LIGA, VALOR_TRFM) %>% 
+  rename(PAIS=BANDERA, `PAIS LIGA`=BANDERA2,VALOR=VALOR_TRFM) %>% 
+  mutate(VALOR=paste0(VALOR/1000000," Millones de €")) %>% gt() %>%
+  tab_header(title = "TOP 7 JUGADORES MÁS VALORADOS SEGÚN TRANSFERMARKT.") %>% 
+  gt_theme_538() %>% gt_img_rows(columns = PAIS, height = 20) %>% 
+  gt_img_rows(columns = `PAIS LIGA`, height = 20) %>% 
+  tab_style(style = list(cell_text(align = "center", size = "small")),
+            locations = list(cells_column_labels(columns = c(JUGADOR, PUESTO, `PAIS LIGA`, LIGA, VALOR,PAIS)))) %>%
+  tab_style(style = list(cell_text(align = "center", size = "small")),
+            locations = list(cells_body(columns = c(JUGADOR, PUESTO, `PAIS LIGA`, LIGA, VALOR,PAIS)))) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>% 
+  tab_source_note("FUENTE: TRANSFERMARKT") %>% 
+        tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+
+## SELECIONES MÁS VALORADAS.
+
+<b>Solo 3 de las selecciones más valoradas del top 5, son las favoritas según las casas de apuestas para ganar el mundial: Brasil, Inglaterra y Francia.</b>
+
+<div class="columns-2">
+```{r, echo=FALSE, message=FALSE}
+dtb %>% group_by(PUESTO) %>% summarise(VALOR_TRFM=max(VALOR_TRFM, na.rm = T)) %>% left_join(dtb) %>% 
+  select(PUESTO,JUGADOR,BANDERA,LIGA,BANDERA2, VALOR_TRFM) %>% 
+  rename(VALOR=VALOR_TRFM,`PAIS LIGA`=BANDERA2, PAIS=BANDERA) %>% 
+  mutate(VALOR=paste0(VALOR/1000000," Millones de €")) %>% gt() %>%
+  tab_header(title = "JUGADOR MÁS VALORADO POR PUESTO, SEGÚN TRANSFERMARKT.") %>% 
+  gt_theme_538() %>% gt_img_rows(columns = PAIS, height = 15) %>% 
+  gt_img_rows(columns = `PAIS LIGA`, height = 15) %>% 
+  tab_style(style = list(cell_text(align = "center", size="x-small")),
+            locations = list(cells_column_labels(columns = c(JUGADOR, PUESTO, `PAIS LIGA`, LIGA, VALOR,PAIS)))) %>%
+  tab_style(style = list(cell_text(align = "center", size="x-small")),
+            locations = list(cells_body(columns = c(JUGADOR, PUESTO, `PAIS LIGA`, LIGA, VALOR,PAIS)))) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>% 
+  tab_source_note("FUENTE: TRANSFERMARKT") %>% 
+        tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+
+```{r, echo=FALSE, message=FALSE}
+dtb %>% group_by(BANDERA,PAIS) %>% summarise(`VALOR TOTAL`=sum(VALOR_TRFM, na.rm=T)) %>%
+  arrange(-`VALOR TOTAL`) %>% head(5) %>% rename(N=BANDERA) %>% ungroup() %>% 
+  mutate(`VALOR TOTAL`=paste0(`VALOR TOTAL`/1000000," Millones de €")) %>% gt() %>% 
+  tab_header(title = "TOP 5 DE SELECCIONES CON MAYOR VALOR, SEGÚN TRANSFERMARKT.") %>% 
+  gt_theme_538() %>% gt_img_rows(columns = N, height = 20) %>% 
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_column_labels(columns = c(N, PAIS, `VALOR TOTAL`)))) %>%
+  tab_style(style = list(cell_text(align = "center")),
+            locations = list(cells_body(columns = c(N, PAIS, `VALOR TOTAL`)))) %>% 
+  tab_source_note("ELABORACIÓN: https://github.com/CesarAHN") %>% 
+  tab_source_note("FUENTE: TRANSFERMARKT") %>% 
+          tab_style(style = list(cell_text(size="xx-small")),
+            locations = list(cells_source_notes()))
+```
+</div>
+
+## ¿Qué viene?
+
+<b font size=50>En los próximos días se publicará un modelo matemático que realizará las predicciones para saber que selección tiene más probabilidades de ganar el mundial.<b>
+
+<b>Los códigos de programación se compartirán en mi github: <https://github.com/CesarAHN/></b>
